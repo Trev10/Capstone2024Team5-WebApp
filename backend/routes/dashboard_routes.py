@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_mail import Mail, Message
 from models.db_module import db
-from datetime import datetime, timedelta
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from utils import handle_request_errors, handle_sqlalchemy_errors, query_database
 from models.user_management_models import User, Appointment, GlucoseLog, Notification
