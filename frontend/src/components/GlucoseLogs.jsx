@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, CssBaseline, TextField, Container, Box, Typography, Paper, Grid } from '@mui/material';
+import { Button, CssBaseline, TextField, Container, Box, Typography, Paper, Grid, Table, TableRow, TableCell, TableBody } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { VictoryChart, VictoryLine, VictoryTooltip } from 'victory';
 
 export default function GlucoseLogs() {
     const navigate = useNavigate();
@@ -78,6 +79,38 @@ export default function GlucoseLogs() {
         }
     };
 
+    const GlucoseChart = ({ logs }) => {
+        const formattedLogs = logs.map(log => ({
+            x: new Date(log.creation_date),
+            y: log.glucose_level,
+            label: `Date: ${new Date(log.creation_date).toLocaleDateString()}, Glucose Level: ${log.glucose_level}`
+        }));
+    
+        return (
+            <div>
+                <h2>Your Glucose History</h2>
+                <VictoryChart
+                    width={1000}
+                    height={320}
+                    padding={{ top: 20, bottom: 40, left: 50, right: 50 }}
+                    domainPadding={{ x: 20, y: 20 }}
+                >
+                    <VictoryLine
+                        labelComponent={<VictoryTooltip />}
+                        data={formattedLogs}
+                        x="x"
+                        y="y"
+                        labels={({ datum }) => datum.label}
+                        style={{
+                            data: { stroke: "#007bff", strokeWidth: 5 }
+                        }}
+                    />
+                </VictoryChart>
+            </div>
+        );
+    };
+
+    
     return (
         <Container component="main" maxWidth="md">
             <CssBaseline />
@@ -90,6 +123,7 @@ export default function GlucoseLogs() {
             >
                 Go Back
             </Button>
+            <GlucoseChart logs={logs}></GlucoseChart>
             <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
                     <Box
@@ -100,7 +134,7 @@ export default function GlucoseLogs() {
                         }}
                     >
                         <Typography component="h1" variant="h5">
-                            Glucose Log Tracker
+                            Add New Logs
                         </Typography>
                         <Box component="form" noValidate sx={{ mt: 1 }}>
                             <TextField
@@ -140,29 +174,50 @@ export default function GlucoseLogs() {
                     </Box>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                <Paper elevation={6} sx={{ padding: 2 }}>
-                    <Typography variant="h6" gutterBottom>
-                        Previous Glucose Logs:
-                    </Typography>
-                    {logs.map((log) => (
-                        <Box key={log.id} sx={{ marginBottom: 2 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ccc', paddingBottom: 1 }}>
-                                <Typography variant="subtitle1">
-                                    {log.creation_date}
-                                </Typography>
-                                <Button variant="outlined" color="error" onClick={() => deleteLog(log.id)}>
-                                    Delete
-                                </Button>
-                            </Box>
-                            <Box sx={{ marginTop: 1 }}>
-                                <Typography variant="body1">
-                                    Glucose Level: {log.glucose_level} mg/dL
-                                </Typography>
-                            </Box>
-                        </Box>
-                    ))}
-                </Paper>
-            </Grid>
+                    <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+                        <Paper elevation={6} sx={{ padding: 2 }}>
+                            <Typography variant="h6" gutterBottom>
+                                Previous Glucose Logs:
+                            </Typography>
+                            <Table>
+                                <TableBody>
+                                    <TableRow>
+                                        <TableCell>Date & Time</TableCell>
+                                        <TableCell>Glucose Level (mg/dL)</TableCell>
+                                        <TableCell>Action</TableCell>
+                                    </TableRow>
+                                    {logs
+                                        .slice()
+                                        .reverse()
+                                        .map((log) => {
+                                            const logDate = new Date(log.creation_date);
+                                            const formattedDate = logDate.toLocaleDateString(undefined, {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric',
+                                            });
+                                            const formattedTime = logDate.toLocaleTimeString(undefined, {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            });
+                                            
+                                            return (
+                                                <TableRow key={log.id}>
+                                                    <TableCell>{formattedDate} at {formattedTime}</TableCell>
+                                                    <TableCell>{log.glucose_level} mg/dL</TableCell>
+                                                    <TableCell>
+                                                        <Button variant="outlined" color="error" onClick={() => deleteLog(log.id)}>
+                                                            Delete
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                </TableBody>
+                            </Table>
+                        </Paper>
+                    </Box>
+                </Grid>
             </Grid>
         </Container>
     );

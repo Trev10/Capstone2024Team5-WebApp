@@ -3,7 +3,7 @@
 from functools import wraps
 from flask import jsonify
 from sqlalchemy.exc import SQLAlchemyError
-from models.db_module import db
+from utils.db_module import db
 
 # Decorator pattern to handle SQLAlchemy errors and rollback the db session
 def handle_sqlalchemy_errors(func):
@@ -16,7 +16,7 @@ def handle_sqlalchemy_errors(func):
             return jsonify(message = 'Server error occurred'), 500
     return decorated_func
 
-# Error handling and database querying generic helper
+# Error handling and database querying generic helper for user ID related queries
 def query_database(model, user_id, filters=None):
     try:
         query = model.query.filter_by(user_id=user_id)

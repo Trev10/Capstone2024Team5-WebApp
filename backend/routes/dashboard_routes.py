@@ -1,16 +1,24 @@
 # Dashboard and data routes
 # Endpoints for retrieving user data for front end display + misc. non-auth tasks
+import base64
 import re
 from datetime import datetime
 from flask import request, jsonify, Blueprint
 from flask_cors import CORS
 from flask_jwt_extended import jwt_required, get_jwt_identity
+<<<<<<< HEAD
 from flask_mail import Mail, Message
 from models.db_module import db
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from utils import handle_request_errors, handle_sqlalchemy_errors, query_database
+=======
+from utils.db_module import db
+from datetime import datetime
+from utils.utils import handle_request_errors, handle_sqlalchemy_errors, query_database
+>>>>>>> 2286d4c966550dbe02290deaa7c28d6e8a97db67
 from models.user_management_models import User, Appointment, GlucoseLog, Notification
+from models.product_models import Product
 
 # Register dashboard_routes as a blueprint for importing into app.py + set up CORS
 dashboard_routes = Blueprint('dashboard_routes', __name__)
@@ -350,75 +358,29 @@ def notifications():
         return jsonify(message='Notification deleted.'), 200
     
 """
-Auto Email Reminder System:
-    Scheduled Tasks:
-        - Task: remind_glucose_log
-            - Schedule: Daily at Midnight
-            - Purpose: Checks if users have logged their glucose levels in the last 24 hours during their 90-day tracking period. Sends a reminder email if not logged.
-            - Method: Queries the 'glucose_log' table to find the last entry date for each user and compares it with the current date.
-            - Email Trigger:
-                - Subject: "Reminder to log your glucose"
-                - Body: "Please remember to log your daily glucose level."
+    /dashboard/products API endpoint:
+        GET:
+            - Expected fields: {none}
+            - Purpose: Retrieve product info to populate page
+            - Query database to retrieve all products
             - Response:
-                - Success: Reminder email sent successfully.
-                - Failure: Issues in querying the database or sending email.
-
-        - Task: remind_appointment
-            - Schedule: Daily at Noon
-            - Purpose: Sends an email reminder to users about their appointments scheduled for the next day.
-            - Method: Queries the 'appointment' table for appointments that are scheduled for the next day.
-            - Email Trigger:
-                - Subject: "Appointment Reminder"
-                - Body: "Reminder: You have an appointment with {doctor_name} on {appointment_date}."
-            - Response:
-                - Success: Reminder email sent successfully.
-                - Failure: Issues in querying the database or sending email.
-
-    Technical Configuration:
-        - Flask-Mail Configuration:
-            - MAIL_SERVER: 'smtp.gmail.com'
-            - MAIL_PORT: 465
-            - MAIL_USE_SSL: True
-            - Credentials are securely configured using environment variables.
+                - 200: Notifications information retrieved
+                - 500: Database/backend issues
 """
+@dashboard_routes.route('/products', methods=['GET'])
+@handle_sqlalchemy_errors
+def products():
+    products = Product.query.all()
+    products_list = []
 
-## Email reminder system
-app.config['MAIL_SERVER'] = 'smtp.gmail.com' ## SMTP (Simple Mail Transfer Protocal)
-app.config['MAIL_PORT'] = 587 
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_USERNAME'] = 'aimplusportal@gmail.com' ## AimPlus Portal email 
-app.config['MAIL_PASSWORD'] = 'cwyb czoj koub aikm' ## App specific password to access email
+    for product in products:
+        product_info = {
+            'id': product.id,
+            'product_type': product.product_type,
+            'model_name': product.model_name,
+            'description': product.description,
+            'image': base64.b64encode(product.image).decode('utf-8') if product.image else None
+        }
+        products_list.append(product_info)
 
-mail = Mail(app)
-
-def send_email(subject, recipient, body):
-    msg = Message(subject, recipients=[recipient], body=body, sender=app.config['MAIL_USERNAME'])
-    mail.send(msg)
-    
-def remind_glucose_log():
-    today = datetime.now().date()
-    ninety_days_ago = today - timedelta(days=90)
-    users = User.query.all()  # Assuming User model has an email attribute
-
-    for user in users:
-        last_glucose_entry = GlucoseLog.query.filter_by(user_id=user.id).order_by(GlucoseLog.creation_date.desc()).first()
-        if last_glucose_entry:
-            last_entry_date = datetime.strptime(last_glucose_entry.creation_date, '%Y-%m-%d').date()
-            if last_entry_date < today and last_entry_date >= ninety_days_ago:
-                send_email("Reminder to log your glucose", user.email, "Please remember to log your daily glucose level.")
-
-def remind_appointment():
-    tomorrow = datetime.now().date() + timedelta(days=1)
-    appointments = Appointment.query.filter_by(appointment_date=tomorrow.strftime('%Y-%m-%d')).all()
-
-    for appointment in appointments:
-        user = User.query.get(appointment.user_id)
-        send_email("Appointment Reminder", user.email, f"Reminder: You have an appointment with {appointment.doctor_name} on {appointment.appointment_date}.")
-
-
-scheduler = BackgroundScheduler()
-scheduler.start()
-
-scheduler.add_job(remind_glucose_log, 'cron', hour=0)  # Runs daily at midnight
-scheduler.add_job(remind_appointment, 'cron', hour=12)  # Runs daily at noon
+    return jsonify(products_list), 200
